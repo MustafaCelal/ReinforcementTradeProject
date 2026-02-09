@@ -1,0 +1,227 @@
+# TensorBoard / Training Logs
+tensorboard_log/
+tensorboard_logs/
+logs/
+runs/
+*.tfevents.*
+events.*
+*.v2
+
+# ML/DL Framework Specific
+checkpoints/
+checkpoint
+*.index
+*.meta
+*.data-*
+*.ckpt*
+*.pt
+*.pth
+*.h5
+*.pkl
+*.pickle
+*.joblib
+*.model
+*.bin
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582; used by e.g. github.com/David-OConnor/pyflow
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# RL Model Files
+models/
+**/models/
+**/checkpoints/
+
+# Optuna Study Databases
+*.db
+*.sqlite
+studies/
+optuna_study.db
+
+# Data Files
+data/
+**/data/
+*.csv
+*.h5
+*.hdf5
+*.pkl
+*.pickle
+*.feather
+*.parquet
+*.npy
+*.npz
+
+# Trading Specific
+backtest_results/
+live_results/
+config/credentials.yaml
+config/api_keys.json
+
+# Large Files
+*.zip
+*.tar.gz
+*.7z
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.out
+
+# MLFlow
+mlruns/
+
+# Weights & Biases
+wandb/
+
+# Notebook outputs
+notebooks/*.csv
+notebooks/*.png
+notebooks/*.jpg
+
+# Docker
+docker-compose.override.yml
+
+# Local config overrides
+config/local/
+config/*.local.yaml
+
+# Training Output
+training_logs/
+evaluation_results/
+hyperparameter_results/
+walk_forward_results/
+
+# Binary files
+*.bin
+*.model
+*.pt
+*.pth
+*.joblib
+
+# Cache directories
+.cache/
+*_cache/
+cache/
+
+# MacOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Project specific
+.env.local
+.env.*.local
+
+# TensorBoard patterns (EKLENDİ)
+tfevents.*
+*.profile
+*.trace.json.gz
+plugins/
