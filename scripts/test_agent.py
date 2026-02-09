@@ -110,27 +110,28 @@ def main():
         test_df, feature_cols = DataProcessor.add_indicators(raw_df)
 
     # Must match training params
-    SL_OPTS = cfg.SL_OPTIONS
-    TP_OPTS = cfg.TP_OPTIONS
-    WIN = cfg.WINDOW_SIZE
+    SL_OPTS = cfg.TradingConfig.SL_OPTIONS
+    TP_OPTS = cfg.TradingConfig.TP_OPTIONS
+    WIN = cfg.TradingConfig.WINDOW_SIZE
 
     test_env = ForexTradingEnv(
         df=test_df,
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=cfg.SPREAD_PIPS,
-            commission_pips=cfg.COMMISSION_PIPS,
-            max_slippage_pips=cfg.MAX_SLIPPAGE_PIPS,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=False,
             episode_max_steps=None,
             feature_columns=feature_cols,
-            hold_reward_weight=0.01,
-            open_penalty_pips=0.5,
-            time_penalty_pips=0.01,
-            unrealized_delta_weight=0.02,
-            initial_equity_usd=cfg.INITIAL_EQUITY_USD,
-            lot_size=cfg.LOT_SIZE_MICRO
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
     )
 
     vec_test_env = DummyVecEnv([lambda: test_env])

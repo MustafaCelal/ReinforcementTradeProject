@@ -81,9 +81,9 @@ def main():
 
     # ---- Env factories ----
     # ATR Multipliers for dynamic SL/TP
-    SL_OPTS = [1.5, 2.0, 3.0]
-    TP_OPTS = [2.0, 3.0, 4.5, 6.0]
-    WIN = 30
+    SL_OPTS = cfg.TradingConfig.SL_OPTIONS
+    TP_OPTS = cfg.TradingConfig.TP_OPTIONS
+    WIN = cfg.TradingConfig.WINDOW_SIZE
 
     # Train env: random starts to reduce memorization
     def make_train_env():
@@ -92,17 +92,20 @@ def main():
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=1.0,
-            commission_pips=0.0,
-            max_slippage_pips=0.2,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=True,
             min_episode_steps=1000,
             episode_max_steps=2000,
             feature_columns=feature_cols,
-            hold_reward_weight=0.02,       # Increased to let profits run
-            open_penalty_pips=1.5,         # Increased to discourage overtrading
-            time_penalty_pips=0.01,
-            unrealized_delta_weight=0.02
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
 
     # Train-eval env: deterministic start, NO random starts (so curve is stable/reproducible)
@@ -112,16 +115,19 @@ def main():
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=1.0,
-            commission_pips=0.0,
-            max_slippage_pips=0.2,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=False,
             episode_max_steps=None,
             feature_columns=feature_cols,
-            hold_reward_weight=0.02,
-            open_penalty_pips=1.5,
-            time_penalty_pips=0.01,
-            unrealized_delta_weight=0.02
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
 
     # Test-eval env: deterministic
@@ -131,16 +137,19 @@ def main():
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=1.0,
-            commission_pips=0.0,
-            max_slippage_pips=0.2,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=False,
             episode_max_steps=None,
             feature_columns=feature_cols,
-            hold_reward_weight=0.02,
-            open_penalty_pips=1.5,
-            time_penalty_pips=0.01,
-            unrealized_delta_weight=0.02
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
 
     train_vec_env = DummyVecEnv([make_train_env])
@@ -185,11 +194,11 @@ def main():
             verbose=1,
             tensorboard_log=os.path.join(cfg.BASE_DIR, "tensorboard_log"),
             policy_kwargs=policy_kwargs,
-            learning_rate=0.0001,
-            batch_size=128,
-            ent_coef=0.02,         # Increased exploration to help model find better cycles
-            n_epochs=10,
-            n_steps=2048
+            learning_rate=cfg.TradingConfig.LEARNING_RATE,
+            batch_size=cfg.TradingConfig.BATCH_SIZE,
+            ent_coef=cfg.TradingConfig.ENT_COEF,         # Increased exploration to help model find better cycles
+            n_epochs=cfg.TradingConfig.N_EPOCHS,
+            n_steps=cfg.TradingConfig.N_STEPS
         )
 
     # ---- Checkpoints ----

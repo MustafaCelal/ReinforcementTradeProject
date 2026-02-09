@@ -94,9 +94,9 @@ def main():
     print(f"Test bar sayısı  : {len(test_df)}")
     
     # Environment ayarları
-    WIN = cfg.WINDOW_SIZE
-    SL_OPTS = cfg.SL_OPTIONS
-    TP_OPTS = cfg.TP_OPTIONS
+    WIN = cfg.TradingConfig.WINDOW_SIZE
+    SL_OPTS = cfg.TradingConfig.SL_OPTIONS
+    TP_OPTS = cfg.TradingConfig.TP_OPTIONS
     
     def make_train_env():
         return ForexTradingEnv(
@@ -104,15 +104,20 @@ def main():
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=cfg.SPREAD_PIPS,
-            commission_pips=cfg.COMMISSION_PIPS,
-            max_slippage_pips=cfg.MAX_SLIPPAGE_PIPS,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=True,
             min_episode_steps=500,  # LSTM için daha kısa episodlar
             episode_max_steps=1000,
             feature_columns=feature_cols,
-            initial_equity_usd=cfg.INITIAL_EQUITY_USD,
-            lot_size=cfg.LOT_SIZE_MICRO,
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO,
         )
     
     def make_eval_env(test=False):
@@ -121,14 +126,19 @@ def main():
             window_size=WIN,
             sl_options=SL_OPTS,
             tp_options=TP_OPTS,
-            spread_pips=cfg.SPREAD_PIPS,
-            commission_pips=cfg.COMMISSION_PIPS,
-            max_slippage_pips=cfg.MAX_SLIPPAGE_PIPS,
+            spread_pips=cfg.TradingConfig.SPREAD_PIPS,
+            commission_pips=cfg.TradingConfig.COMMISSION_PIPS,
+            max_slippage_pips=cfg.TradingConfig.MAX_SLIPPAGE_PIPS,
             random_start=False,
             episode_max_steps=None,
             feature_columns=feature_cols,
-            initial_equity_usd=cfg.INITIAL_EQUITY_USD,
-            lot_size=cfg.LOT_SIZE_MICRO,
+            hold_reward_weight=cfg.TradingConfig.HOLD_REWARD_WEIGHT,
+            open_penalty_pips=cfg.TradingConfig.OPEN_PENALTY_PIPS,
+            time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
+            unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
+            sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
+            lot_size=cfg.TradingConfig.LOT_SIZE_MICRO,
         )
     
     train_vec_env = DummyVecEnv([make_train_env])
