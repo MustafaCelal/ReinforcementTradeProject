@@ -64,6 +64,7 @@ class ForexTradingEnv(gym.Env):
         time_penalty_pips: float = 0.02,     # NEW: cost per bar in a trade
         initial_equity_usd: float = 10000.0, # NEW: starting balance
         sharpe_reward_weight: float = 0.1,   # NEW: Sharpe ratio based reward weight
+        drawdown_penalty_weight: float = 0.5,  # NEW: Maximum Drawdown penalty weight
         log_trades: bool = False,            # NEW: enable detailed file logging
     ):
         super().__init__()
@@ -109,6 +110,7 @@ class ForexTradingEnv(gym.Env):
         self.open_penalty_pips = float(open_penalty_pips)
         self.time_penalty_pips = float(time_penalty_pips)
         self.sharpe_reward_weight = float(sharpe_reward_weight)
+        self.drawdown_penalty_weight = float(drawdown_penalty_weight)
 
         # Episode handling
         self.random_start = bool(random_start)
@@ -181,6 +183,8 @@ class ForexTradingEnv(gym.Env):
 
         # Accounting
         self.equity_usd = self.initial_equity_usd
+        self.peak_equity_usd = self.initial_equity_usd  # Track peak for drawdown
+        self.max_drawdown_pct = 0.0  # Track maximum drawdown %
         
         # Overtrading tracking
         self.last_trade_end_step = -100 # Initialize to avoid penalty on first trade
@@ -572,18 +576,43 @@ class ForexTradingEnv(gym.Env):
         if self.episode_max_steps is not None and self.steps_in_episode >= self.episode_max_steps:
             self.truncated = True
 
-        # 6) Log equity
+        # 6) Log equity and track drawdown
         self.equity_curve.append(float(self.equity_usd))
+        
+        # Track peak equity for drawdown calculation
+        if self.equity_usd > self.peak_equity_usd:
+            self.peak_equity_usd = self.equity_usd
+        
+        # Calculate current drawdown %
+        if self.peak_equity_usd > 0:
+            current_drawdown_pct = ((self.peak_equity_usd - self.equity_usd) / self.peak_equity_usd) * 100.0
+            self.max_drawdown_pct = max(self.max_drawdown_pct, current_drawdown_pct)
+        else:
+            current_drawdown_pct = 0.0
 
         # 7) Build observation
         obs = self._get_observation()
 
-        # 8) Final reward scaling
+        # 8) Final reward scaling and drawdown penalty
         # ENHANCEMENT: Penalize losses more heavily to encourage better Risk:Reward
         if reward_pips < 0:
             reward = float(reward_pips) * 2.5 * self.reward_scale  # Increased from 1.5x to 2.5x
         else:
             reward = float(reward_pips) * self.reward_scale
+
+        # ===== MAXIMUM DRAWDOWN PENALTY (Hayatta Kalma İçgüdüsü) =====
+        # Büyük drawdown'lar modele cezalandırılır, "agresif risk alma" engellenir
+        if current_drawdown_pct > 0:
+            # Drawdown severity penalty
+            # 5% DD: -0.1, 10% DD: -0.4, 20% DD: -1.6, 30% DD: -3.6, 40% DD: -6.4
+            drawdown_penalty = (current_drawdown_pct / 10.0) ** 2 * self.drawdown_penalty_weight
+            reward -= drawdown_penalty
+            
+            # Extra penalty if approaching catastrophic loss (équity < 50% of initial)
+            equity_ratio = self.equity_usd / self.initial_equity_usd
+            if equity_ratio < 0.5:
+                catastrophic_penalty = (0.5 - equity_ratio) * 10.0 * self.drawdown_penalty_weight
+                reward -= catastrophic_penalty
 
         # Stronger penalty for unrealized loss while holding to discourage "hope" trading
         if self.position != 0:

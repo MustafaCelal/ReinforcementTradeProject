@@ -18,11 +18,12 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from sb3_contrib import RecurrentPPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 
 from src.data.loader import DataLoader
 from src.data.processor import DataProcessor
 from src.core.environment import ForexTradingEnv
+from src.utils.callbacks import BestModelEvalCallback, TensorboardCallback
 import config.settings as cfg
 
 
@@ -93,6 +94,17 @@ def main():
     print(f"Eğitim bar sayısı: {len(train_df)}")
     print(f"Test bar sayısı  : {len(test_df)}")
     
+    # ---- Feature Scaling (MinMaxScaler) ----
+    print("\n🔄 Feature Scaling (0-1 normalizasyonu)...")
+    scaler = DataProcessor.create_scaler(train_df, feature_cols)
+    train_df = DataProcessor.scale_features(train_df, feature_cols, scaler)
+    test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+    
+    # Save scaler for inference/testing
+    scaler_path = os.path.join(cfg.MODELS_DIR, f"scaler_{symbol.replace('=', '_').replace('-', '_')}.pkl")
+    DataProcessor.save_scaler(scaler, scaler_path)
+    print(f"   ✅ Scaler kaydedildi: {scaler_path}")
+    
     # Environment ayarları
     WIN = cfg.TradingConfig.WINDOW_SIZE
     SL_OPTS = cfg.TradingConfig.SL_OPTIONS
@@ -116,6 +128,7 @@ def main():
             time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
             unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
             sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            drawdown_penalty_weight=cfg.TradingConfig.DRAWDOWN_PENALTY_WEIGHT,
             initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
             lot_size=cfg.TradingConfig.LOT_SIZE_MICRO,
         )
@@ -137,6 +150,7 @@ def main():
             time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
             unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
             sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            drawdown_penalty_weight=cfg.TradingConfig.DRAWDOWN_PENALTY_WEIGHT,
             initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
             lot_size=cfg.TradingConfig.LOT_SIZE_MICRO,
         )
@@ -170,7 +184,7 @@ def main():
             verbose=1,
             tensorboard_log=os.path.join(cfg.BASE_DIR, "tensorboard_log"),
             policy_kwargs=policy_kwargs,
-            learning_rate=3e-4,
+            learning_rate=cfg.linear_learning_rate_schedule,  # Linear Learning Rate Scheduler
             n_steps=128,      # LSTM için daha düşük (memory)
             batch_size=64,
             n_epochs=10,
@@ -189,11 +203,34 @@ def main():
         name_prefix=f"recurrent_{symbol.replace('=', '_').replace('-', '_')}"
     )
     
-    # Eğitim
-    print("\n🚀 Eğitim başlıyor...")
-    model.learn(total_timesteps=total_timesteps, callback=checkpoint_callback)
+    # ---- Best Model Evaluation (Otomatik) ----
+    best_model_save_path = os.path.join(cfg.MODELS_DIR, f"recurrent_{symbol.replace('=', '_').replace('-', '_')}_best_evals.zip")
+    best_model_eval_callback = BestModelEvalCallback(
+        eval_env=test_eval_env,
+        eval_freq=25_000,  # Her 25k timestep'te değerlendir (iç loop daha kısa olduğu için)
+        best_model_save_path=best_model_save_path,
+        verbose=1
+    )
     
-    # Model kaydet
+    tensorboard_callback = TensorboardCallback()
+    callback = CallbackList([checkpoint_callback, best_model_eval_callback, tensorboard_callback])
+    
+    # Eğitim
+    print("\n🚀 Eğitim başlıyor... (EvalCallback en kârlı modeli otomatik kaydedecek)")
+    model.learn(total_timesteps=total_timesteps, callback=callback)
+    
+    # ---- Eğitim Tamamlandı ----
+    print(f"\n✅ Eğitim tamamlandı!")
+    print(f"   📊 Best Model (OOS) kaydedildi: {best_model_save_path}")
+    
+    # Load the best model from evaluation
+    if os.path.exists(best_model_save_path):
+        print(f"🔄 Best model yükleniyor: {best_model_save_path}")
+        model = RecurrentPPO.load(best_model_save_path, env=train_vec_env)
+    else:
+        print("⚠️  Warning: Best model from evaluation not found.")
+    
+    # Model kaydet (final)
     model.save(model_path)
     
     # VecNormalize istatistiklerini kaydet

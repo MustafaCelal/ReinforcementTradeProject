@@ -109,6 +109,16 @@ def main():
         raw_df = DataLoader.download_yfinance(symbol=symbol, interval="1h", period=period)
         test_df, feature_cols = DataProcessor.add_indicators(raw_df)
 
+    # Load scaler if available (to match training preprocessing)
+    scaler_path = os.path.join(cfg.MODELS_DIR, f"scaler_{symbol.replace('=', '_').replace('-', '_')}.pkl")
+    if os.path.exists(scaler_path):
+        print(f"🔄 Feature Scaler yükleniyor: {scaler_path}")
+        scaler = DataProcessor.load_scaler(scaler_path)
+        test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+        print(f"   ✅ Test verileri scaled")
+    else:
+        print(f"⚠️  Scaler bulunamadı: {scaler_path}")
+
     # Must match training params
     SL_OPTS = cfg.TradingConfig.SL_OPTIONS
     TP_OPTS = cfg.TradingConfig.TP_OPTIONS

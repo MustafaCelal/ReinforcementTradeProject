@@ -14,7 +14,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from src.data.loader import DataLoader
 from src.data.processor import DataProcessor
 from src.core.environment import ForexTradingEnv
-from src.utils.callbacks import TensorboardCallback
+from src.utils.callbacks import TensorboardCallback, BestModelEvalCallback
 import config.settings as cfg
 
 
@@ -78,6 +78,17 @@ def main():
 
     print(f"Eğitim bar sayısı: {len(train_df)}")
     print(f"Test bar sayısı   : {len(test_df)}")
+    
+    # ---- Feature Scaling (MinMaxScaler) ----
+    print("\n🔄 Feature Scaling (0-1 normalizasyonu)...")
+    scaler = DataProcessor.create_scaler(train_df, feature_cols)
+    train_df = DataProcessor.scale_features(train_df, feature_cols, scaler)
+    test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+    
+    # Save scaler for inference/testing
+    scaler_path = os.path.join(cfg.MODELS_DIR, f"scaler_{symbol.replace('=', '_').replace('-', '_')}.pkl")
+    DataProcessor.save_scaler(scaler, scaler_path)
+    print(f"   ✅ Scaler kaydedildi: {scaler_path}")
 
     # ---- Env factories ----
     # ATR Multipliers for dynamic SL/TP
@@ -104,6 +115,7 @@ def main():
             time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
             unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
             sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            drawdown_penalty_weight=cfg.TradingConfig.DRAWDOWN_PENALTY_WEIGHT,
             initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
             lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
@@ -126,6 +138,7 @@ def main():
             time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
             unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
             sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            drawdown_penalty_weight=cfg.TradingConfig.DRAWDOWN_PENALTY_WEIGHT,
             initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
             lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
@@ -148,6 +161,7 @@ def main():
             time_penalty_pips=cfg.TradingConfig.TIME_PENALTY_PIPS,
             unrealized_delta_weight=cfg.TradingConfig.UNREALIZED_DELTA_WEIGHT,
             sharpe_reward_weight=cfg.TradingConfig.SHARPE_REWARD_WEIGHT,
+            drawdown_penalty_weight=cfg.TradingConfig.DRAWDOWN_PENALTY_WEIGHT,
             initial_equity_usd=cfg.TradingConfig.INITIAL_EQUITY_USD,
             lot_size=cfg.TradingConfig.LOT_SIZE_MICRO
         )
@@ -194,7 +208,7 @@ def main():
             verbose=1,
             tensorboard_log=os.path.join(cfg.BASE_DIR, "tensorboard_log"),
             policy_kwargs=policy_kwargs,
-            learning_rate=cfg.TradingConfig.LEARNING_RATE,
+            learning_rate=cfg.linear_learning_rate_schedule,  # Linear Learning Rate Scheduler
             batch_size=cfg.TradingConfig.BATCH_SIZE,
             ent_coef=cfg.TradingConfig.ENT_COEF,         # Increased exploration to help model find better cycles
             n_epochs=cfg.TradingConfig.N_EPOCHS,
@@ -211,53 +225,40 @@ def main():
         name_prefix=f"ppo_{symbol.replace('=', '_').replace('-', '_')}"
     )
 
-    tensorboard_callback = TensorboardCallback()
-    callback = CallbackList([checkpoint_callback, tensorboard_callback])
-
-    # ---- Train ----
-    model.learn(total_timesteps=total_timesteps, callback=callback)
-
-    # ---- Select best model by OOS final equity ----
-    equity_curve_test_last, final_equity_test_last = evaluate_model(model, test_eval_env)
-    print(f"[OOS Eval] Last model final equity: {final_equity_test_last:.2f}")
-
-    best_equity = -np.inf
-    best_path = None
-
-    prefix = f"ppo_{symbol.replace('=', '_').replace('-', '_')}"
-    ckpts = sorted(
-        [f for f in os.listdir(ckpt_dir) if f.endswith(".zip") and f.startswith(prefix)],
-        key=lambda x: os.path.getmtime(os.path.join(ckpt_dir, x))
+    # ---- Best Model Evaluation (Otomatik) ----
+    best_model_save_path = os.path.join(cfg.MODELS_DIR, f"model_{symbol.replace('=', '_').replace('-', '_')}_best_evals.zip")
+    best_model_eval_callback = BestModelEvalCallback(
+        eval_env=test_eval_env,
+        eval_freq=50_000,  # Her 50k timestep'te değerlendir
+        best_model_save_path=best_model_save_path,
+        verbose=1
     )
 
-    for ck in ckpts:
-        ck_path = os.path.join(ckpt_dir, ck)
-        try:
-            m = PPO.load(ck_path, env=test_eval_env)
-            _, final_eq = evaluate_model(m, test_eval_env)
-            print(f"[OOS Eval] {ck} -> final equity: {final_eq:.2f}")
-            if final_eq > best_equity:
-                best_equity = final_eq
-                best_path = ck_path
-        except Exception as e:
-            print(f"[Skip] Could not evaluate checkpoint {ck}: {e}")
+    tensorboard_callback = TensorboardCallback()
+    callback = CallbackList([checkpoint_callback, best_model_eval_callback, tensorboard_callback])
 
-    # Decide best model
-    if best_path is None or final_equity_test_last >= best_equity:
-        print("Using last model as best (by OOS final equity).")
-        best_model = model
+    # ---- Train ----
+    print("\n🚀 Eğitim başlıyor... (EvalCallback en kârlı modeli otomatik kaydedecek)")
+    model.learn(total_timesteps=total_timesteps, callback=callback)
+
+    # ---- Eğitim Tamamlandı ----
+    print(f"\n✅ Eğitim tamamlandı!")
+    print(f"   📊 Best Model (OOS) kaydedildi: {best_model_save_path}")
+    
+    # Load the best model from evaluation
+    if os.path.exists(best_model_save_path):
+        print(f"🔄 Best model yükleniyor: {best_model_save_path}")
+        best_model = PPO.load(best_model_save_path, env=train_vec_env)
     else:
-        print(f"Using best checkpoint: {best_path} (OOS final equity: {best_equity:.2f})")
-        best_model = PPO.load(best_path, env=train_vec_env)
-
-    # Save final best
-    best_model.save(target_best_model_path)
+        print("⚠️  Warning: Best model from evaluation not found. Using last trained model.")
+        best_model = model
     
     # CRITICAL: Save VecNormalize stats for test/inference phase
     stats_path = os.path.join(cfg.MODELS_DIR, "vec_normalize.pkl")
     train_vec_env.save(stats_path)
     
-    print(f"✅ Eğitim tamamlandı. En iyi model ve normalizasyon verileri kaydedildi: {cfg.MODELS_DIR}")
+    # Save final best model as default path (for backward compatibility)
+    best_model.save(target_best_model_path)
 
     # ---- Plot BOTH: in-sample vs out-of-sample ----
     equity_curve_train, final_equity_train = evaluate_model(best_model, train_eval_env)

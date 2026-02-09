@@ -158,6 +158,12 @@ def main():
     
     print(f"Train bars: {len(train_df)}, Test bars: {len(test_df)}")
     
+    # Feature Scaling
+    print("🔄 Feature Scaling (0-1 normalizasyonu)...")
+    scaler = DataProcessor.create_scaler(train_df, feature_cols)
+    train_df = DataProcessor.scale_features(train_df, feature_cols, scaler)
+    test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+    
     # Optuna study oluştur
     sampler = TPESampler(seed=42)
     pruner = MedianPruner(n_startup_trials=5, n_warmup_steps=10)

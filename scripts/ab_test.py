@@ -168,6 +168,15 @@ def main():
     test_df = df.iloc[split_idx:].copy()
     print(f"Test veri seti: {len(test_df)} bar")
     
+    # Load scaler if available
+    scaler_path = os.path.join(cfg.MODELS_DIR, f"scaler_{args.symbol.replace('=', '_').replace('-', '_')}.pkl")
+    if os.path.exists(scaler_path):
+        print(f"🔄 Feature Scaler yükleniyor...")
+        scaler = DataProcessor.load_scaler(scaler_path)
+        test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+    else:
+        print(f"⚠️  Scaler bulunamadı: {scaler_path}")
+    
     # Create environments
     def make_env():
         return create_eval_env(test_df, feature_cols)

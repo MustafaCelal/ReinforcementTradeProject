@@ -44,10 +44,12 @@ class TradingConfig:
     TIME_PENALTY_PIPS = 0.01
     UNREALIZED_DELTA_WEIGHT = 0.02
     SHARPE_REWARD_WEIGHT = 0.1
+    DRAWDOWN_PENALTY_WEIGHT = 0.5  # Maximum Drawdown cezası (hayatta kalma instinksi)
     
     # PPO/Training Hyperparameters
     TOTAL_TIMESTEPS = 600_000
     LEARNING_RATE = 0.0001
+    LEARNING_RATE_MIN = 1e-5  # Minimum learning rate (sonunda bu değere iner)
     ENT_COEF = 0.02
     BATCH_SIZE = 128
     N_EPOCHS = 10
@@ -77,3 +79,28 @@ TRADING_CHART_FILE = os.path.join(OUTPUTS_DIR, "trading_chart.png")
 # Ensure directories exist
 os.makedirs(MODELS_DIR, exist_ok=True)
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
+
+
+# --- Learning Rate Scheduler ---
+def linear_learning_rate_schedule(progress):
+    """
+    Linear Learning Rate Scheduler
+    
+    Eğitim başında hızlı öğrenme, sonuna yaklaştıkça yavaş öğrenme.
+    Bu, modelin sonunda "saçmalanmasını" (divergence) önler.
+    
+    Args:
+        progress: 0 (başlangıç) ile 1 (bitiş) arasında da değer
+    
+    Returns:
+        Learning rate değeri
+    
+    Örnek: 
+        - progress=0.0  -> learning_rate = 0.0001 (maksimum)
+        - progress=0.5  -> learning_rate ≈ 0.000055 (yarı yol)
+        - progress=1.0  -> learning_rate = 1e-5 (minimum)
+    """
+    initial_lr = TradingConfig.LEARNING_RATE
+    min_lr = TradingConfig.LEARNING_RATE_MIN
+    return max(min_lr, initial_lr * (1 - progress) + min_lr * progress)
+

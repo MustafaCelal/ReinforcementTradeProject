@@ -178,6 +178,11 @@ def main():
         
         print(f"Train bars: {len(train_df)}, Test bars: {len(test_df)}")
         
+        # Scaling (fit on train, apply to both)
+        scaler = DataProcessor.create_scaler(train_df, feature_cols)
+        train_df = DataProcessor.scale_features(train_df, feature_cols, scaler)
+        test_df = DataProcessor.scale_features(test_df, feature_cols, scaler)
+        
         if len(train_df) < cfg.WINDOW_SIZE + 50 or len(test_df) < cfg.WINDOW_SIZE + 50:
             print(f"⚠️ Window {window_num} atlanıyor - yetersiz veri")
             continue
